@@ -17,40 +17,27 @@
 
 package androidx.build.gradle.gcpbuildcache
 
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
+import okhttp3.Call
 import okhttp3.OkHttpClient
-import retrofit2.Call
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.create
-import retrofit2.http.GET
-import retrofit2.http.Query
+import okhttp3.Request
 
-internal fun gson(config: GsonBuilder.() -> Unit = {}): Gson {
-    val builder = GsonBuilder()
-    config.invoke(builder)
-    return builder.create()
-}
+internal fun interface TokenInfoService {
 
-internal interface TokenInfoService {
-    @GET("/oauth2/v1/tokeninfo")
-    fun tokenInfo(@Query("access_token") accessToken: String): Call<Unit>
+    fun tokenInfo(accessToken: String): Call
 
     companion object {
         fun tokenService(): TokenInfoService {
-            val httpClient = OkHttpClient
-                .Builder()
+            val httpClient = OkHttpClient.Builder()
                 .addInterceptor(NetworkErrorInterceptor())
                 .build()
 
-            val retrofit = Retrofit.Builder()
-                .baseUrl("https://www.googleapis.com")
-                .addConverterFactory(GsonConverterFactory.create(gson()))
-                .client(httpClient)
-                .build()
+            return TokenInfoService { accessToken ->
+                val request = Request.Builder()
+                    .url("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=$accessToken")
+                    .build()
 
-            return retrofit.create()
+                httpClient.newCall(request)
+            }
         }
     }
 }

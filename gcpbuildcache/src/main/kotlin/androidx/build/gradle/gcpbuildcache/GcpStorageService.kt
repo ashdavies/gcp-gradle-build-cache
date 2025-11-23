@@ -223,15 +223,17 @@ internal class GcpStorageService(
             }
             val tokenService = TokenInfoService.tokenService()
             val tokenInfoResponse = tokenService.tokenInfo(credentials.accessToken.tokenValue).execute()
-            if (!tokenInfoResponse.isSuccessful) {
-                if (forceClearCache) {
-                    throw Exception(messageOnAuthenticationFailure)
-                } else {
-                    return defaultApplicationGcpCredentials(
-                        scopes,
-                        messageOnAuthenticationFailure,
-                        forceClearCache = true
-                    )
+            tokenInfoResponse.use {
+                if (!it.isSuccessful) {
+                    if (forceClearCache) {
+                        throw Exception(messageOnAuthenticationFailure)
+                    } else {
+                        return defaultApplicationGcpCredentials(
+                            scopes,
+                            messageOnAuthenticationFailure,
+                            forceClearCache = true
+                        )
+                    }
                 }
             }
             return credentials
@@ -277,8 +279,10 @@ internal class GcpStorageService(
                     }
                     val tokenService = TokenInfoService.tokenService()
                     val tokenInfoResponse = tokenService.tokenInfo(credentials.accessToken.tokenValue).execute()
-                    if (!tokenInfoResponse.isSuccessful) {
-                        throw GradleException(tokenInfoResponse.errorBody().toString())
+                    tokenInfoResponse.use {
+                        if (!it.isSuccessful) {
+                            throw GradleException(it.body?.string() ?: it.message)
+                        }
                     }
                     credentials
                 }
